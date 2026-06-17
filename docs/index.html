@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content" />
     <title>My Sibelga — Assistant</title>
     <style>
         /* ── Sibelga brand tokens (real app palette) ── */
@@ -1140,7 +1140,11 @@
                 border-radius: 0;
                 box-shadow: none;
             }
-            .phone-island { display: none; }
+            /* Hide fake status bar — real iOS one already shows */
+            .phone-island,
+            .app-statusbar { display: none; }
+            /* Prevent keyboard from resizing/pushing the layout */
+            .app-screen { position: fixed; inset: 0; overflow: hidden; }
             .chat-container {
                 right: 8px;
                 bottom: 80px;

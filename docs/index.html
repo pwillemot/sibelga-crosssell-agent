@@ -1318,7 +1318,7 @@
                 padding-top: max(calc(env(safe-area-inset-top) + 12px), 56px);
             }
             /* Prevent keyboard from resizing/pushing the layout */
-            .app-screen { position: fixed; inset: 0; overflow: hidden; }
+            .app-screen { position: fixed; inset: 0; overflow: hidden; z-index: 1; }
             .chat-container {
                 right: 8px;
                 bottom: 80px;

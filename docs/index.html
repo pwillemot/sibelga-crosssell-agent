@@ -1143,6 +1143,8 @@
             /* Hide fake status bar — real iOS one already shows */
             .phone-island,
             .app-statusbar { display: none; }
+            /* Push app header below the real iOS status bar / Dynamic Island */
+            .app-header { padding-top: max(calc(env(safe-area-inset-top) + 12px), 56px); }
             /* Prevent keyboard from resizing/pushing the layout */
             .app-screen { position: fixed; inset: 0; overflow: hidden; }
             .chat-container {

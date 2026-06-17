@@ -1528,8 +1528,9 @@
             },
             {
                 agentMessage: "Perfect — I've recorded meter {ean} with a reading of {reading} kWh. ✓\nYou'll receive a confirmation email shortly.\n\nBy the way, your consumption this period is below your 3-year average — great news for your bill! 📉",
-                prospectHint: "Great, thank you",
-                showWidget: null
+                prospectHint: null,
+                showWidget: null,
+                autoAdvance: 3000
             },
             {
                 agentMessage: "One more thing I wanted to flag for you — we have a planned maintenance intervention scheduled for {interruptionDate} in your area. The works will affect Rue de la Loi and several surrounding streets in the Saint-Josse/Schaerbeek district. Electricity will be interrupted between 08:00 and 13:00 while our teams carry out necessary upgrades to the local distribution network. We recommend unplugging sensitive devices beforehand.\n\nWould you like us to send you a WhatsApp reminder the evening before, so you're not caught off guard?",
@@ -1690,6 +1691,13 @@
             if (step.showWidget === 'Scheduler') {
                 renderScheduler();
                 setInputEnabled(false);
+                return;
+            }
+
+            // Auto-advance steps (no user input needed)
+            if (step.autoAdvance) {
+                setInputEnabled(false);
+                setTimeout(() => advanceScript(), step.autoAdvance);
                 return;
             }
 

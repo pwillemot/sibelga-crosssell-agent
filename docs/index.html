@@ -709,6 +709,75 @@
             color: var(--sb-blue);
         }
 
+        /* ── Meter capture: tab toggle buttons ── */
+        .ean-choice-btns {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .ean-choice-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 10px;
+            border-radius: 12px;
+            border: 1.5px solid var(--sb-border);
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .ean-choice-btn:hover { border-color: var(--sb-blue); background: var(--sb-blue-light); }
+
+        .ean-choice-btn.selected {
+            border-color: var(--sb-blue);
+            background: var(--sb-blue-light);
+            color: var(--sb-blue);
+        }
+
+        .ean-choice-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--sb-purple-light);
+            color: var(--sb-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ean-choice-btn.selected .ean-choice-icon {
+            background: var(--sb-blue);
+            color: #fff;
+        }
+
+        .ean-manual-section { display: none; }
+        .ean-scan-section   { display: none; }
+
+        .ean-input {
+            width: 100%;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 1px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            background: var(--sb-bg);
+        }
+
+        .ean-input:focus { border-color: var(--sb-blue); background: #fff; }
+
         /* ── Meter reading widget ── */
         .reading-widget {
             margin: 4px 0 4px 38px;
@@ -1414,17 +1483,12 @@
                 showWidget: null
             },
             {
-                agentMessage: "Of course! Could you give me your EAN code or address so I can find your meter?",
-                prospectHint: "My address is 12 Rue de la Loi, Brussels",
-                showWidget: null
+                agentMessage: "Of course! You can enter your meter number and current reading manually, or just take a photo and I'll read them for you.",
+                prospectHint: null,
+                showWidget: 'MeterCapture'
             },
             {
-                agentMessage: "Thanks! I found your electricity meter (EAN: BE001234567890).\nPlease enter your current reading below, or take a photo of your meter display.",
-                prospectHint: "e.g. 4821",
-                showWidget: 'CaptureReading'
-            },
-            {
-                agentMessage: "Perfect — reading of {reading} kWh recorded. ✓\nYou'll receive a confirmation email shortly.",
+                agentMessage: "Perfect — I've recorded meter {ean} with a reading of {reading} kWh. ✓\nYou'll receive a confirmation email shortly.",
                 prospectHint: "Great, thank you",
                 showWidget: null
             },
@@ -1496,6 +1560,7 @@
         let isTyping         = false;
         let isComplete       = false;
         let capturedReading  = '';
+        let capturedEAN      = '';
         let capturedName     = '';
         let capturedProduct  = '';
         let msgIdCounter     = 0;
@@ -1539,12 +1604,13 @@
             const step = SCRIPT[index];
             let text = step.agentMessage
                 .replace('{reading}', capturedReading || '—')
+                .replace('{ean}',     capturedEAN     || 'BE001234567890')
                 .replace('{name}',    capturedName    || 'there');
 
             addMessage(text, 'agent');
 
-            if (step.showWidget === 'CaptureReading') {
-                renderReadingWidget();
+            if (step.showWidget === 'MeterCapture') {
+                renderMeterCaptureWidget();
                 setInputEnabled(false);
                 return;
             }
@@ -1572,122 +1638,176 @@
         // ── Meter reading widget ──────────────────────────────────────────────
         const isMobile = () => (window.innerWidth <= 768 || navigator.maxTouchPoints > 0);
 
-        function renderReadingWidget() {
+        function renderMeterCaptureWidget() {
+            const ns = 'http://www.w3.org/2000/svg';
             const widget = makeEl('div', 'reading-widget');
-            widget.id = 'readingWidget';
 
-            const label = makeEl('p', 'reading-widget-label');
-            label.textContent = 'Meter reading';
-            widget.appendChild(label);
+            // ── Tab toggle buttons ──
+            const choiceBtns = makeEl('div', 'ean-choice-btns');
 
-            // ── Text input (always present, hidden on mobile until after camera) ──
-            const inputRow = makeEl('div', 'reading-input-row');
+            const manualBtn = makeEl('button', 'ean-choice-btn');
+            const manualIcon = makeEl('div', 'ean-choice-icon');
+            const editSvg = document.createElementNS(ns, 'svg');
+            editSvg.setAttribute('width', '20'); editSvg.setAttribute('height', '20');
+            editSvg.setAttribute('viewBox', '0 0 24 24'); editSvg.setAttribute('fill', 'none');
+            editSvg.setAttribute('stroke', 'currentColor'); editSvg.setAttribute('stroke-width', '2');
+            editSvg.setAttribute('stroke-linecap', 'round');
+            const ep1 = document.createElementNS(ns, 'path');
+            ep1.setAttribute('d', 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7');
+            const ep2 = document.createElementNS(ns, 'path');
+            ep2.setAttribute('d', 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z');
+            editSvg.appendChild(ep1); editSvg.appendChild(ep2);
+            manualIcon.appendChild(editSvg);
+            const manualLbl = makeEl('span'); manualLbl.textContent = 'Enter manually';
+            manualBtn.appendChild(manualIcon); manualBtn.appendChild(manualLbl);
+
+            const photoBtn = makeEl('button', 'ean-choice-btn');
+            const photoIcon = makeEl('div', 'ean-choice-icon');
+            const camSvg = document.createElementNS(ns, 'svg');
+            camSvg.setAttribute('width', '20'); camSvg.setAttribute('height', '20');
+            camSvg.setAttribute('viewBox', '0 0 24 24'); camSvg.setAttribute('fill', 'none');
+            camSvg.setAttribute('stroke', 'currentColor'); camSvg.setAttribute('stroke-width', '2');
+            camSvg.setAttribute('stroke-linecap', 'round'); camSvg.setAttribute('stroke-linejoin', 'round');
+            const cp = document.createElementNS(ns, 'path');
+            cp.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
+            const cc = document.createElementNS(ns, 'circle');
+            cc.setAttribute('cx', '12'); cc.setAttribute('cy', '13'); cc.setAttribute('r', '4');
+            camSvg.appendChild(cp); camSvg.appendChild(cc);
+            photoIcon.appendChild(camSvg);
+            const photoLbl = makeEl('span'); photoLbl.textContent = 'Take a photo';
+            photoBtn.appendChild(photoIcon); photoBtn.appendChild(photoLbl);
+
+            choiceBtns.appendChild(manualBtn);
+            choiceBtns.appendChild(photoBtn);
+            widget.appendChild(choiceBtns);
+
+            // ── Manual section: EAN + reading fields ──
+            const manualSection = makeEl('div', 'ean-manual-section');
+
+            const eanLabel = makeEl('p', 'reading-widget-label');
+            eanLabel.textContent = 'Meter number (EAN)';
+            const eanInput = makeEl('input', 'ean-input');
+            eanInput.type = 'text';
+            eanInput.placeholder = 'BE001234567890';
+            eanInput.maxLength = 18;
+            manualSection.appendChild(eanLabel);
+            manualSection.appendChild(eanInput);
+
+            const readingLabel = makeEl('p', 'reading-widget-label');
+            readingLabel.style.marginTop = '10px';
+            readingLabel.textContent = 'Current reading';
+            const readingInputRow = makeEl('div', 'reading-input-row');
             const readingInput = makeEl('input', 'reading-input');
             readingInput.type = 'number';
             readingInput.inputMode = 'numeric';
             readingInput.placeholder = '0000';
-            readingInput.min = '0';
-            readingInput.max = '999999';
+            readingInput.min = '0'; readingInput.max = '999999';
             const unit = makeEl('span', 'reading-unit');
             unit.textContent = 'kWh';
-            inputRow.appendChild(readingInput);
-            inputRow.appendChild(unit);
+            readingInputRow.appendChild(readingInput);
+            readingInputRow.appendChild(unit);
+            manualSection.appendChild(readingLabel);
+            manualSection.appendChild(readingInputRow);
+            widget.appendChild(manualSection);
 
-            // Confirm button (shared)
+            // ── Photo section ──
+            const photoSection = makeEl('div', 'ean-scan-section');
+
+            const fileInput = makeEl('input');
+            fileInput.type = 'file'; fileInput.accept = 'image/*';
+            fileInput.setAttribute('capture', 'environment');
+            fileInput.style.display = 'none';
+            photoSection.appendChild(fileInput);
+
+            const bigCamBtn = makeEl('button', 'camera-btn');
+            const camIconCircle = makeEl('div', 'camera-btn-icon');
+            const bigCamSvg = document.createElementNS(ns, 'svg');
+            bigCamSvg.setAttribute('width', '26'); bigCamSvg.setAttribute('height', '26');
+            bigCamSvg.setAttribute('viewBox', '0 0 24 24'); bigCamSvg.setAttribute('fill', 'none');
+            bigCamSvg.setAttribute('stroke-linecap', 'round'); bigCamSvg.setAttribute('stroke-linejoin', 'round');
+            const bcp = document.createElementNS(ns, 'path');
+            bcp.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
+            bcp.setAttribute('stroke', '#fff'); bcp.setAttribute('stroke-width', '2');
+            const bcc = document.createElementNS(ns, 'circle');
+            bcc.setAttribute('cx', '12'); bcc.setAttribute('cy', '13'); bcc.setAttribute('r', '4');
+            bcc.setAttribute('stroke', '#fff'); bcc.setAttribute('stroke-width', '2');
+            bigCamSvg.appendChild(bcp); bigCamSvg.appendChild(bcc);
+            camIconCircle.appendChild(bigCamSvg);
+            const camBtnLabel = makeEl('span'); camBtnLabel.textContent = 'Take photo of meter';
+            const camBtnSub = makeEl('span', 'camera-btn-sub');
+            camBtnSub.textContent = 'Reads meter number and index automatically';
+            bigCamBtn.appendChild(camIconCircle);
+            bigCamBtn.appendChild(camBtnLabel);
+            bigCamBtn.appendChild(camBtnSub);
+            photoSection.appendChild(bigCamBtn);
+
+            const ocrScanning = makeEl('div', 'ocr-scanning');
+            ocrScanning.style.display = 'none';
+            const spinner = makeEl('div', 'ocr-spinner');
+            const ocrText = makeEl('span'); ocrText.textContent = 'Reading meter…';
+            ocrScanning.appendChild(spinner); ocrScanning.appendChild(ocrText);
+            photoSection.appendChild(ocrScanning);
+            widget.appendChild(photoSection);
+
+            // ── Confirm button ──
             const confirmBtn = makeEl('button', 'confirm-reading-btn');
-            confirmBtn.textContent = 'Confirm reading';
+            confirmBtn.textContent = 'Confirm';
             confirmBtn.disabled = true;
-
-            if (isMobile()) {
-                // On mobile: hide text input, show big camera button first
-                inputRow.style.display = 'none';
-                confirmBtn.style.display = 'none';
-
-                // Hidden file input
-                const fileInput = makeEl('input');
-                fileInput.type = 'file';
-                fileInput.accept = 'image/*';
-                fileInput.setAttribute('capture', 'environment');
-                fileInput.style.display = 'none';
-                widget.appendChild(fileInput);
-
-                // Big camera button
-                const cameraBtn = makeEl('button', 'camera-btn');
-
-                const iconCircle = makeEl('div', 'camera-btn-icon');
-                const camSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                camSvg.setAttribute('width', '26'); camSvg.setAttribute('height', '26');
-                camSvg.setAttribute('viewBox', '0 0 24 24'); camSvg.setAttribute('fill', 'none');
-                const camPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                camPath.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
-                camPath.setAttribute('stroke', '#fff'); camPath.setAttribute('stroke-width', '2');
-                camPath.setAttribute('stroke-linecap', 'round'); camPath.setAttribute('stroke-linejoin', 'round');
-                const camCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                camCircle.setAttribute('cx', '12'); camCircle.setAttribute('cy', '13');
-                camCircle.setAttribute('r', '4'); camCircle.setAttribute('stroke', '#fff');
-                camCircle.setAttribute('stroke-width', '2');
-                camSvg.appendChild(camPath); camSvg.appendChild(camCircle);
-                iconCircle.appendChild(camSvg);
-
-                const camLabel = makeEl('span');
-                camLabel.textContent = 'Take photo of meter';
-                const camSub = makeEl('span', 'camera-btn-sub');
-                camSub.textContent = 'Opens your camera';
-
-                cameraBtn.appendChild(iconCircle);
-                cameraBtn.appendChild(camLabel);
-                cameraBtn.appendChild(camSub);
-                widget.appendChild(cameraBtn);
-
-                // OCR scanning state
-                const ocrScanning = makeEl('div', 'ocr-scanning');
-                ocrScanning.style.display = 'none';
-                const spinner = makeEl('div', 'ocr-spinner');
-                const ocrText = makeEl('span');
-                ocrText.textContent = 'Reading your meter…';
-                ocrScanning.appendChild(spinner);
-                ocrScanning.appendChild(ocrText);
-                widget.appendChild(ocrScanning);
-
-                // Camera tap → open file picker
-                cameraBtn.addEventListener('click', () => fileInput.click());
-
-                fileInput.addEventListener('change', () => {
-                    if (!fileInput.files.length) return;
-                    cameraBtn.style.display  = 'none';
-                    ocrScanning.style.display = 'flex';
-
-                    setTimeout(() => {
-                        ocrScanning.style.display = 'none';
-                        // Reveal input with simulated reading
-                        const simulated = String(4000 + Math.floor(Math.random() * 2000));
-                        readingInput.value = simulated;
-                        inputRow.style.display = 'flex';
-                        confirmBtn.style.display = 'block';
-                        confirmBtn.disabled = false;
-                        scrollToBottom();
-                    }, 2500);
-                });
-
-            } else {
-                // Desktop: show text input immediately, enable confirm on typing
-                readingInput.addEventListener('input', () => {
-                    confirmBtn.disabled = !readingInput.value.trim();
-                });
-            }
-
-            widget.appendChild(inputRow);
             widget.appendChild(confirmBtn);
+
             chatMessages.appendChild(widget);
             scrollToBottom();
 
-            // Confirm button submits reading and advances script
+            function checkConfirm() {
+                confirmBtn.disabled = !(eanInput.value.trim() && readingInput.value.trim());
+            }
+            eanInput.addEventListener('input', checkConfirm);
+            readingInput.addEventListener('input', checkConfirm);
+
+            // ── Tab switching ──
+            manualBtn.addEventListener('click', () => {
+                manualBtn.classList.add('selected');
+                photoBtn.classList.remove('selected');
+                manualSection.style.display = 'block';
+                photoSection.style.display = 'none';
+                checkConfirm();
+                scrollToBottom();
+            });
+
+            photoBtn.addEventListener('click', () => {
+                photoBtn.classList.add('selected');
+                manualBtn.classList.remove('selected');
+                photoSection.style.display = 'block';
+                manualSection.style.display = 'none';
+                confirmBtn.disabled = true;
+                scrollToBottom();
+            });
+
+            // ── Camera flow ──
+            bigCamBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => {
+                if (!fileInput.files.length) return;
+                bigCamBtn.style.display = 'none';
+                ocrScanning.style.display = 'flex';
+                setTimeout(() => {
+                    ocrScanning.style.display = 'none';
+                    eanInput.value = 'BE001234567890';
+                    readingInput.value = String(4000 + Math.floor(Math.random() * 2000));
+                    manualSection.style.display = 'block';
+                    checkConfirm();
+                    scrollToBottom();
+                }, 2500);
+            });
+
+            // ── Confirm ──
             confirmBtn.addEventListener('click', () => {
+                const ean = eanInput.value.trim();
                 const val = readingInput.value.trim();
-                if (!val) return;
+                if (!ean || !val) return;
+                capturedEAN     = ean;
                 capturedReading = Number(val).toLocaleString('fr-BE');
                 widget.remove();
-                addMessage(`My reading is ${capturedReading} kWh`, 'prospect');
+                addMessage('Meter ' + ean + ', reading: ' + capturedReading + ' kWh', 'prospect');
                 advanceScript();
             });
         }

@@ -1,0 +1,2091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <title>My Sibelga — Assistant</title>
+    <style>
+        /* ── Sibelga brand tokens (real app palette) ── */
+        :root {
+            --sb-purple:      #3D1270;
+            --sb-purple-mid:  #5B1F9E;
+            --sb-purple-light:#EDE5F8;
+            --sb-pink:        #D63384;
+            --sb-amber:       #F5A623;
+            --sb-green:       #00A651;
+            --sb-green-light: #E6F6EE;
+            --sb-bg:          #F4F2F8;
+            --sb-border:      #E2D9EF;
+            --agent-bubble:   #FFFFFF;
+            --prospect-bubble:#3D1270;
+            --text-primary:   #1A0A33;
+            --text-secondary: #7A6B99;
+            --radius:         18px;
+            --shadow:         0 8px 32px rgba(61,18,112,0.22);
+            /* keep blue aliases pointing to purple for buttons/inputs */
+            --sb-blue:        #3D1270;
+            --sb-blue-dark:   #2A0A55;
+            --sb-blue-light:  #EDE5F8;
+            --sb-orange:      #F5A623;
+            --sb-border-card: #E2D9EF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #F0EDF6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Phone frame ── */
+        .phone-frame {
+            position: relative;
+            width: 390px;
+            height: 844px;
+            background: #F4F2F8;
+            border-radius: 48px;
+            box-shadow: 0 40px 100px rgba(61,18,112,0.30), 0 0 0 10px #1A0A33;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        /* Dynamic island */
+        .phone-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 34px;
+            background: #1A0A33;
+            border-radius: 20px;
+            z-index: 10;
+        }
+
+        /* ── App status bar ── */
+        .app-statusbar {
+            background: linear-gradient(135deg, #3D1270 0%, #5B1F9E 100%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: env(safe-area-inset-top, 14px) 20px 8px;
+            min-height: calc(env(safe-area-inset-top, 14px) + 36px);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        /* ── App header ── */
+        .app-header {
+            background: linear-gradient(135deg, #3D1270 0%, #5B1F9E 100%);
+            padding: 12px 20px 20px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .app-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .app-logo-icon {
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-logo-text {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .app-notif-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-greeting {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .app-ean-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.18);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* ── Scrollable app body ── */
+        .app-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 16px 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .app-body::-webkit-scrollbar { display: none; }
+
+        /* ── App cards ── */
+        .app-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--sb-border-card);
+            box-shadow: 0 2px 10px rgba(61,18,112,0.07);
+        }
+
+        .app-card-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .app-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .app-card-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        /* Consumption bar chart */
+        .chart-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 56px;
+            margin-bottom: 8px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            border-radius: 4px 4px 0 0;
+            min-height: 6px;
+        }
+
+        .chart-bar.withdrawal { background: #D63384; }
+        .chart-bar.injection  { background: #F5A623; }
+        .chart-bar.dim        { background: #EDE5F8; }
+
+        .chart-legend {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        /* Reading row */
+        .reading-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--sb-purple-light);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .reading-row-left { display: flex; flex-direction: column; gap: 2px; }
+        .reading-ean { font-size: 10px; color: var(--text-secondary); }
+        .reading-val { font-size: 18px; font-weight: 800; color: var(--text-primary); }
+        .reading-date { font-size: 10px; color: var(--text-secondary); }
+
+        .reading-cta {
+            background: var(--sb-purple);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: default;
+        }
+
+        /* Invoice row */
+        .invoice-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .invoice-amount {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .invoice-amount span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .invoice-badge {
+            background: #E6F6EE;
+            color: #00A651;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* ── Bottom tab bar ── */
+        .app-tabbar {
+            position: absolute;
+            bottom: 0;
+            left: 0; right: 0;
+            height: 70px;
+            background: #fff;
+            border-top: 1px solid var(--sb-border-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding-bottom: 10px;
+            z-index: 5;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #B0A0C8;
+            flex: 1;
+        }
+
+        .tab-item.active { color: var(--sb-purple); }
+
+        .tab-icon {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── App layout inside phone ── */
+        .app-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Floating launcher ── */
+        .chat-launcher {
+            position: absolute;
+            bottom: 88px;
+            right: 16px;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, var(--sb-blue) 0%, var(--sb-blue-dark) 100%);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0,35,112,0.35);
+            z-index: 9999;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chat-launcher:hover {
+            transform: scale(1.07);
+            box-shadow: 0 6px 28px rgba(0,35,112,0.45);
+        }
+
+        .launcher-badge {
+            position: absolute;
+            top: 7px;
+            right: 7px;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: var(--sb-orange);
+            border: 2px solid #fff;
+            animation: pulse-badge 2s infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%       { transform: scale(1.3); opacity: 0.75; }
+        }
+
+        /* ── Chat window ── */
+        .chat-container {
+            position: absolute;
+            right: 12px;
+            bottom: 90px;
+            width: 340px;
+            max-width: calc(100% - 20px);
+            height: 560px;
+            max-height: calc(100% - 150px);
+            display: flex;
+            flex-direction: column;
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            background: var(--sb-bg);
+            z-index: 9998;
+            animation: slide-up 0.25s ease-out;
+        }
+
+        .chat-container.hidden { display: none; }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(18px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+
+        /* ── Header ── */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, var(--sb-blue) 0%, var(--sb-blue-dark) 100%);
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .agent-avatar {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+        }
+
+        .avatar-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+            border: 2px solid rgba(255,255,255,0.35);
+        }
+
+        .online-dot {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: var(--sb-green);
+            border: 2px solid #fff;
+            transition: background 0.3s;
+        }
+
+        .online-dot.connecting {
+            background: #F59E0B;
+            animation: pulse-dot 1s infinite;
+        }
+
+        .online-dot.offline { background: #94A3B8; }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.35; }
+        }
+
+        .agent-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .agent-name {
+            font-weight: 700;
+            font-size: 15px;
+            line-height: 1;
+            letter-spacing: 0.1px;
+        }
+
+        .agent-status {
+            font-size: 11px;
+            opacity: 0.82;
+            letter-spacing: 0.1px;
+        }
+
+        /* Sibelga wordmark in header */
+        .sibelga-wordmark {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.9;
+        }
+
+        .sibelga-wordmark svg { flex-shrink: 0; }
+
+        .wordmark-text {
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #fff;
+        }
+
+        .header-close-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .header-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+        /* ── Messages area ── */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--sb-border); border-radius: 4px; }
+
+        /* ── Connecting state ── */
+        .connecting-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 16px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--sb-border);
+            margin: 8px 0;
+            color: var(--text-secondary);
+        }
+
+        .connecting-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* ── Message bubbles ── */
+        .msg-row {
+            display: flex;
+            width: 100%;
+            align-items: flex-end;
+            gap: 8px;
+            animation: msg-in 0.2s ease-out;
+        }
+
+        @keyframes msg-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-row.agent   { justify-content: flex-start; }
+        .msg-row.prospect { justify-content: flex-end; }
+
+        .msg-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            object-fit: cover;
+            object-position: center top;
+            border: 1.5px solid var(--sb-border);
+        }
+
+        .bubble-wrap {
+            display: flex;
+            align-items: flex-end;
+            max-width: 82%;
+        }
+
+        .bubble {
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            word-break: break-word;
+        }
+
+        .agent .bubble {
+            background: var(--agent-bubble);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            border: 1px solid var(--sb-border);
+        }
+
+        .prospect .bubble {
+            background: var(--prospect-bubble);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bubble-text {
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
+        .bubble-time {
+            display: block;
+            font-size: 10px;
+            margin-top: 4px;
+            opacity: 0.55;
+            text-align: right;
+        }
+
+        /* ── Typing indicator ── */
+        .typing-bubble {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 12px 16px;
+            min-width: 60px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sb-blue);
+            animation: bounce 1.2s infinite;
+            opacity: 0.5;
+        }
+
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        .connecting-state .dot { background: #F59E0B; }
+
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0);   opacity: 0.4; }
+            30%            { transform: translateY(-6px); opacity: 1;   }
+        }
+
+        /* ── Input area ── */
+        .chat-input-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            background: #fff;
+            border-top: 1px solid var(--sb-border);
+            flex-shrink: 0;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 24px;
+            padding: 10px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+            background: var(--sb-bg);
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            border-color: var(--sb-blue);
+            background: #fff;
+        }
+
+        .chat-input:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .send-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: var(--sb-blue);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: var(--sb-blue-dark);
+            transform: scale(1.06);
+        }
+
+        .send-btn:disabled {
+            background: var(--sb-border);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Footer ── */
+        .chat-footer {
+            padding: 6px 14px 8px;
+            background: #fff;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--sb-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .sf-badge {
+            font-weight: 700;
+            color: var(--sb-blue);
+        }
+
+        /* ── Meter reading widget ── */
+        .reading-widget {
+            margin: 4px 0 4px 38px;
+            background: #fff;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 2px 10px rgba(0,35,112,0.07);
+            animation: msg-in 0.2s ease-out;
+        }
+
+        .reading-widget-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .reading-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .reading-input {
+            flex: 1;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 2px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            background: var(--sb-bg);
+        }
+
+        .reading-input:focus { border-color: var(--sb-blue); background: #fff; }
+
+        .reading-unit {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .camera-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 22px 14px;
+            border-radius: 14px;
+            border: 2px dashed var(--sb-purple);
+            background: var(--sb-purple-light);
+            color: var(--sb-purple);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s, border-color 0.15s;
+            width: 100%;
+        }
+
+        .camera-btn:active { background: #D9C8F0; }
+
+        .camera-btn-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--sb-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-btn-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-top: -4px;
+        }
+
+        .ocr-scanning {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: var(--sb-blue-light);
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--sb-blue);
+            font-weight: 600;
+        }
+
+        .ocr-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2.5px solid var(--sb-border);
+            border-top-color: var(--sb-blue);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .confirm-reading-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 11px;
+            background: var(--sb-blue);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .confirm-reading-btn:hover:not(:disabled) { background: var(--sb-blue-dark); }
+        .confirm-reading-btn:disabled {
+            background: var(--sb-border);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        /* ── Product cards ── */
+        .product-cards {
+            margin: 4px 0 4px 38px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            animation: msg-in 0.2s ease-out;
+        }
+
+        .product-card {
+            display: flex;
+            align-items: stretch;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+        }
+
+        .product-card:hover {
+            border-color: var(--sb-blue);
+            box-shadow: 0 3px 12px rgba(0,61,165,0.13);
+            transform: translateY(-1px);
+        }
+
+        .product-img-wrap {
+            position: relative;
+            width: 76px;
+            flex-shrink: 0;
+        }
+
+        .product-img {
+            width: 76px;
+            height: 100%;
+            min-height: 84px;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        .product-badge {
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .product-info {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .product-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .product-tagline {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .product-price {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--sb-blue);
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .product-btn {
+            flex: 1;
+            padding: 5px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid;
+            font-family: inherit;
+            transition: background 0.15s, color 0.15s;
+            text-align: center;
+        }
+
+        .info-btn {
+            background: #fff;
+            color: var(--sb-blue);
+            border-color: var(--sb-blue);
+        }
+
+        .info-btn:hover { background: var(--sb-blue); color: #fff; }
+
+        .select-btn {
+            background: var(--sb-blue);
+            color: #fff;
+            border-color: var(--sb-blue);
+        }
+
+        .select-btn:hover { background: var(--sb-blue-dark); border-color: var(--sb-blue-dark); }
+
+        /* ── Scheduler ── */
+        .scheduler-card {
+            margin: 4px 0 4px 38px;
+            background: #fff;
+            border: 1.5px solid var(--sb-border);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,35,112,0.07);
+            animation: msg-in 0.2s ease-out;
+        }
+
+        .scheduler-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--sb-border);
+        }
+
+        .scheduler-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--sb-blue-light);
+            color: var(--sb-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .scheduler-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .scheduler-subtitle {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .scheduler-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .date-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .date-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1.5px solid var(--sb-border);
+            background: #fff;
+            cursor: pointer;
+            min-width: 46px;
+            font-family: inherit;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            color: var(--text-primary);
+        }
+
+        .date-chip:hover { border-color: var(--sb-blue); background: var(--sb-blue-light); }
+
+        .date-chip.selected {
+            border-color: var(--sb-blue);
+            background: var(--sb-blue);
+            color: #fff;
+        }
+
+        .date-weekday { font-size: 9px; font-weight: 600; text-transform: uppercase; opacity: 0.75; line-height: 1; }
+        .date-day     { font-size: 17px; font-weight: 700; line-height: 1.2; }
+        .date-month   { font-size: 9px; opacity: 0.75; line-height: 1; }
+
+        .time-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .time-slot {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1.5px solid var(--sb-border);
+            background: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .time-slot:hover { border-color: var(--sb-blue); background: var(--sb-blue-light); }
+
+        .time-slot.selected {
+            border-color: var(--sb-blue);
+            background: var(--sb-blue);
+            color: #fff;
+        }
+
+        .book-btn {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--sb-blue);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .book-btn:hover:not(:disabled) { background: var(--sb-blue-dark); }
+
+        .book-btn:disabled {
+            background: var(--sb-border);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .booking-confirmed {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 10px;
+            padding: 8px 0;
+            animation: msg-in 0.25s ease-out;
+        }
+
+        .confirmed-icon { animation: pop 0.3s ease-out; }
+
+        @keyframes pop {
+            0%   { transform: scale(0.4); opacity: 0; }
+            70%  { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .confirmed-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--sb-blue);
+        }
+
+        .confirmed-detail {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ── Mobile: phone frame fills screen ── */
+        @media (max-width: 430px) {
+            body { display: block; background: #F0EDF6; }
+            .phone-frame {
+                width: 100vw;
+                height: 100dvh;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .phone-island { display: none; }
+            .chat-container {
+                right: 8px;
+                bottom: 80px;
+                width: calc(100vw - 16px);
+                max-width: calc(100vw - 16px);
+                height: calc(100dvh - 160px);
+                max-height: calc(100dvh - 160px);
+            }
+            .chat-launcher {
+                bottom: 82px;
+                right: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Phone frame wrapping the fake app + chat ── -->
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-island"></div>
+
+        <!-- Fake My Sibelga app screen -->
+        <div class="app-screen">
+
+            <!-- Status bar -->
+            <div class="app-statusbar">
+                <span id="statusClock">9:41</span>
+                <div style="display:flex;gap:5px;align-items:center">
+                    <svg width="15" height="11" viewBox="0 0 15 11" fill="#fff"><rect x="0" y="3" width="3" height="8" rx="1"/><rect x="4" y="2" width="3" height="9" rx="1"/><rect x="8" y="0" width="3" height="11" rx="1"/><rect x="12" y="1" width="3" height="10" rx="1" opacity="0.4"/></svg>
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.4C9.9 2.4 11.6 3.2 12.8 4.5L14.2 3C12.6 1.1 10.4 0 8 0 5.6 0 3.4 1.1 1.8 3L3.2 4.5C4.4 3.2 6.1 2.4 8 2.4Z" fill="#fff"/><path d="M8 5.6C9.2 5.6 10.3 6.1 11.1 7L12.5 5.5C11.3 4.3 9.7 3.6 8 3.6 6.3 3.6 4.7 4.3 3.5 5.5L4.9 7C5.7 6.1 6.8 5.6 8 5.6Z" fill="#fff"/><circle cx="8" cy="10" r="1.8" fill="#fff"/></svg>
+                    <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#fff" stroke-opacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#fff"/><path d="M23 4v4a2 2 0 0 0 0-4Z" fill="#fff" opacity="0.4"/></svg>
+                </div>
+            </div>
+
+            <!-- App header -->
+            <div class="app-header">
+                <div class="app-header-top">
+                    <div class="app-logo">
+                        <div class="app-logo-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L4.5 13.5H11L10 22L20.5 9.5H14L13 2Z"/></svg>
+                        </div>
+                        <span class="app-logo-text">Sibelga</span>
+                    </div>
+                    <div class="app-notif-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </div>
+                </div>
+                <p class="app-greeting">Good morning, Alex 👋</p>
+                <div class="app-ean-chip">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Rue de la Loi 12, Brussels
+                </div>
+            </div>
+
+            <!-- Scrollable content -->
+            <div class="app-body">
+
+                <!-- Consumption card -->
+                <div class="app-card">
+                    <p class="app-card-label">Your consumption · January</p>
+                    <div style="display:flex;gap:16px;margin-bottom:10px">
+                        <div>
+                            <div style="font-size:11px;color:#D63384;font-weight:600;display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#D63384"></span>Withdrawal</div>
+                            <div style="font-size:20px;font-weight:800;color:#1A0A33">5.24 <span style="font-size:12px;font-weight:500;color:#7A6B99">kWh</span></div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#F5A623;font-weight:600;display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#F5A623"></span>Injection</div>
+                            <div style="font-size:20px;font-weight:800;color:#1A0A33">3.98 <span style="font-size:12px;font-weight:500;color:#7A6B99">kWh</span></div>
+                        </div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-bar dim" style="height:30%"></div>
+                        <div class="chart-bar withdrawal" style="height:55%"></div>
+                        <div class="chart-bar dim" style="height:40%"></div>
+                        <div class="chart-bar withdrawal" style="height:75%"></div>
+                        <div class="chart-bar injection" style="height:60%"></div>
+                        <div class="chart-bar withdrawal" style="height:90%"></div>
+                        <div class="chart-bar injection" style="height:45%"></div>
+                        <div class="chart-bar withdrawal" style="height:65%"></div>
+                        <div class="chart-bar dim" style="height:35%"></div>
+                        <div class="chart-bar withdrawal" style="height:50%"></div>
+                        <div class="chart-bar injection" style="height:70%"></div>
+                        <div class="chart-bar dim" style="height:25%"></div>
+                    </div>
+                    <div style="display:flex;gap:8px;font-size:11px;color:#7A6B99">
+                        <span>Jan 8</span><span style="margin-left:auto">Jan 12</span>
+                    </div>
+                </div>
+
+                <!-- Meter reading card -->
+                <div class="app-card">
+                    <p class="app-card-label">Meter reading</p>
+                    <div class="reading-row">
+                        <div class="reading-row-left">
+                            <span class="reading-ean">EAN BE001234567890</span>
+                            <span class="reading-val">4 821 kWh</span>
+                            <span class="reading-date">Last reading: 01/12/2024</span>
+                        </div>
+                        <button class="reading-cta">Submit reading</button>
+                    </div>
+                </div>
+
+                <!-- Invoice card -->
+                <div class="app-card">
+                    <p class="app-card-label">Latest invoice</p>
+                    <div class="invoice-row">
+                        <div>
+                            <div class="invoice-amount">€ 87.40 <span>/ month</span></div>
+                            <div style="font-size:11px;color:#7A6B99;margin-top:2px">Due 31 Jan 2025</div>
+                        </div>
+                        <div class="invoice-badge">Paid ✓</div>
+                    </div>
+                </div>
+
+                <!-- Contract card -->
+                <div class="app-card">
+                    <p class="app-card-label">My contract</p>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:36px;height:36px;background:var(--sb-purple-light);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D1270" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#1A0A33">Electricity · Single-phase</div>
+                            <div style="font-size:11px;color:#7A6B99">Rue de la Loi 12 · Active since 03/2021</div>
+                        </div>
+                        <div style="margin-left:auto;background:#E6F6EE;color:#00A651;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700">Active</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom tab bar -->
+            <div class="app-tabbar">
+                <div class="tab-item active">
+                    <div class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D1270" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+                    Home
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B0A0C8" stroke-width="2.2" stroke-linecap="round"><path d="M13 2L4.5 13.5H11L10 22L20.5 9.5H14L13 2Z"/></svg></div>
+                    Energy
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B0A0C8" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+                    Meters
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B0A0C8" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                    Bills
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B0A0C8" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    Account
+                </div>
+            </div>
+
+        </div><!-- /app-screen -->
+
+    <!-- ── Chat window ── -->
+    <div class="chat-container hidden" id="chatContainer">
+
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="agent-avatar">
+                <img class="avatar-img" src="assets/lisa.jpg" alt="Lisa" id="headerAvatar" />
+                <span class="online-dot" id="onlineDot"></span>
+            </div>
+            <div class="agent-info">
+                <span class="agent-name">Lisa</span>
+                <span class="agent-status" id="agentStatus">Sibelga Assistant · Online</span>
+            </div>
+            <div class="sibelga-wordmark">
+                <!-- Sibelga lightning-bolt style icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M13 2L4.5 13.5H11L10 22L20.5 9.5H14L13 2Z"
+                          fill="#fff" stroke="#fff" stroke-width="0.5"
+                          stroke-linejoin="round"/>
+                </svg>
+                <span class="wordmark-text">Sibelga</span>
+            </div>
+            <button class="header-close-btn" id="closeBtn" aria-label="Close chat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12"
+                          stroke="currentColor" stroke-width="2.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Connecting state (shown on first open) -->
+            <div class="connecting-state" id="connectingState" style="display:none">
+                <div style="display:flex;gap:6px">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+                <span class="connecting-text">Lisa is joining the chat…</span>
+            </div>
+            <!-- Messages injected here by JS -->
+        </div>
+
+        <!-- Input -->
+        <div class="chat-input-area">
+            <input
+                type="text"
+                class="chat-input"
+                id="chatInput"
+                placeholder="Type your message…"
+                disabled
+            />
+            <button class="send-btn" id="sendBtn" disabled aria-label="Send">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 2L11 13" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="chat-footer">
+            <span>Powered by</span>
+            <span class="sf-badge">⚡ Agentforce</span>
+        </div>
+    </div>
+
+    <!-- ── Floating launcher ── -->
+    <button class="chat-launcher" id="launcherBtn" aria-label="Chat with Lisa">
+        <span class="launcher-badge" id="launcherBadge"></span>
+        <svg id="launcherIconChat" width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"
+                  fill="rgba(255,255,255,0.15)"/>
+        </svg>
+        <svg id="launcherIconClose" width="22" height="22" viewBox="0 0 24 24" fill="none" style="display:none">
+            <path d="M18 6L6 18M6 6l12 12"
+                  stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+
+    <script>
+        // ── DOM refs ──────────────────────────────────────────────────────────
+        const chatContainer     = document.getElementById('chatContainer');
+        const launcherBtn       = document.getElementById('launcherBtn');
+        const launcherBadge     = document.getElementById('launcherBadge');
+        const launcherIconChat  = document.getElementById('launcherIconChat');
+        const launcherIconClose = document.getElementById('launcherIconClose');
+        const closeBtn          = document.getElementById('closeBtn');
+        const chatMessages      = document.getElementById('chatMessages');
+        const chatInput         = document.getElementById('chatInput');
+        const sendBtn           = document.getElementById('sendBtn');
+        const connectingState   = document.getElementById('connectingState');
+        const onlineDot         = document.getElementById('onlineDot');
+        const agentStatus       = document.getElementById('agentStatus');
+
+        // ── Conversation script ───────────────────────────────────────────────
+        const SCRIPT = [
+            {
+                agentMessage: "Hi! I'm Lisa, your Sibelga virtual assistant. How can I help you today?",
+                prospectHint: "I need to submit my meter reading",
+                showWidget: null
+            },
+            {
+                agentMessage: "Of course! Could you give me your EAN code or address so I can find your meter?",
+                prospectHint: "My address is 12 Rue de la Loi, Brussels",
+                showWidget: null
+            },
+            {
+                agentMessage: "Thanks! I found your electricity meter (EAN: BE001234567890).\nPlease enter your current reading below, or take a photo of your meter display.",
+                prospectHint: "e.g. 4821",
+                showWidget: 'CaptureReading'
+            },
+            {
+                agentMessage: "Perfect — reading of {reading} kWh recorded. ✓\nYou'll receive a confirmation email shortly.",
+                prospectHint: "Great, thank you",
+                showWidget: null
+            },
+            {
+                agentMessage: "While I have you — I can see your meter is single-phase. Many Brussels residents are switching to EV home charging. Would you like to see what Sibelga can help with?",
+                prospectHint: "Yes, tell me more",
+                showWidget: null
+            },
+            {
+                agentMessage: "Here are our three home charging packages. All include a certified installation by a Sibelga-approved electrician.",
+                prospectHint: null,
+                showWidget: 'Products'
+            },
+            {
+                agentMessage: "Great choice! A certified installer will assess your home's connection and handle the full setup. Shall we book a free site visit?",
+                prospectHint: "Yes please",
+                showWidget: null
+            },
+            {
+                agentMessage: "Pick a date and time that works for you — our technician will come to your address.",
+                prospectHint: null,
+                showWidget: 'Scheduler'
+            },
+            {
+                agentMessage: "You're all set, {name}! 🎉\nWe'll send a confirmation to your email. See you soon!",
+                prospectHint: null,
+                showWidget: null
+            }
+        ];
+
+        // ── Product data ─────────────────────────────────────────────────────
+        const PRODUCTS = [
+            {
+                id: 'basic',
+                name: 'Basic Charge',
+                tagline: 'Portable Type 2 cable · No installation needed',
+                price: 'From €349',
+                img: 'assets/product-basic.jpg',
+                badgeColor: '#003DA5',
+                badge: 'Most popular',
+                detail: 'The Basic Charge is the perfect starter solution:\n\n• Portable Type 2 cable (7m), charges at 7kW\n• Full charge overnight — no wall installation needed\n• Compatible with all EV brands\n• Price: from €349 all-in\n\nIdeal if you want a simple, flexible solution without any installation work.'
+            },
+            {
+                id: 'comfort',
+                name: 'Comfort Charge',
+                tagline: 'Wallbox Pulsar Plus · Smart home charging 11kW',
+                price: 'From €899',
+                img: 'assets/product-comfort.jpg',
+                badgeColor: '#00A651',
+                badge: 'Recommended',
+                detail: 'Our most popular choice for Brussels homeowners:\n\n• Wallbox Pulsar Plus, charges at 11kW — 4× faster than a socket\n• Built-in Wi-Fi & app control for smart scheduling\n• Professional installation by a Sibelga-approved electrician included\n• Price: from €899 all-in\n\nPerfect for fast, smart daily home charging.'
+            },
+            {
+                id: 'smart',
+                name: 'Smart Charge',
+                tagline: 'Wallbox Pulsar Pro · 22kW + solar integration',
+                price: 'From €1,499',
+                img: 'assets/product-smart.jpg',
+                badgeColor: '#F47920',
+                badge: 'Best value',
+                detail: 'The premium all-in-one energy solution:\n\n• Wallbox Pulsar Pro, up to 22kW (3-phase)\n• Full solar panel integration — charge with your own energy\n• Dynamic load balancing + energy reports\n• Professional installation + commissioning included\n• Price: from €1,499 all-in\n\nBest for maximum speed, solar integration and full energy control.'
+            }
+        ];
+
+        // ── State ─────────────────────────────────────────────────────────────
+        let isOpen           = false;
+        let chatOpened       = false;
+        let scriptIndex      = 0;
+        let isTyping         = false;
+        let isComplete       = false;
+        let capturedReading  = '';
+        let capturedName     = '';
+        let capturedProduct  = '';
+        let msgIdCounter     = 0;
+
+        // ── Launcher toggle ───────────────────────────────────────────────────
+        function toggleChat() {
+            isOpen = !isOpen;
+            launcherBadge.style.display = 'none';
+            launcherBtn.style.display   = isOpen ? 'none' : 'flex';
+
+            if (isOpen) {
+                chatContainer.classList.remove('hidden');
+                // retrigger animation
+                chatContainer.style.animation = 'none';
+                requestAnimationFrame(() => { chatContainer.style.animation = ''; });
+                if (!chatOpened) {
+                    chatOpened = true;
+                    startConnectionSequence();
+                }
+            } else {
+                chatContainer.classList.add('hidden');
+            }
+        }
+
+        // ── Connection sequence ───────────────────────────────────────────────
+        function startConnectionSequence() {
+            onlineDot.className     = 'online-dot connecting';
+            agentStatus.textContent = 'Sibelga Assistant · Connecting…';
+            connectingState.style.display = 'flex';
+
+            setTimeout(() => {
+                connectingState.style.display = 'none';
+                onlineDot.className     = 'online-dot';
+                agentStatus.textContent = 'Sibelga Assistant · Online';
+                setTimeout(() => showAgentStep(0), 400);
+            }, 2000);
+        }
+
+        // ── Render an agent step ──────────────────────────────────────────────
+        function showAgentStep(index) {
+            const step = SCRIPT[index];
+            let text = step.agentMessage
+                .replace('{reading}', capturedReading || '—')
+                .replace('{name}',    capturedName    || 'there');
+
+            addMessage(text, 'agent');
+
+            if (step.showWidget === 'CaptureReading') {
+                renderReadingWidget();
+                setInputEnabled(false);
+                return;
+            }
+
+            if (step.showWidget === 'Products') {
+                renderProductCards();
+                setInputEnabled(false);
+                return;
+            }
+
+            if (step.showWidget === 'Scheduler') {
+                renderScheduler();
+                setInputEnabled(false);
+                return;
+            }
+
+            // Update input hint for next prospect turn
+            chatInput.placeholder = step.prospectHint || 'Type your message…';
+
+            // Enable input only for steps that expect typed input
+            const needsInput = !step.showWidget;
+            setInputEnabled(needsInput && !isComplete);
+        }
+
+        // ── Meter reading widget ──────────────────────────────────────────────
+        const isMobile = () => (window.innerWidth <= 768 || navigator.maxTouchPoints > 0);
+
+        function renderReadingWidget() {
+            const widget = makeEl('div', 'reading-widget');
+            widget.id = 'readingWidget';
+
+            const label = makeEl('p', 'reading-widget-label');
+            label.textContent = 'Meter reading';
+            widget.appendChild(label);
+
+            // ── Text input (always present, hidden on mobile until after camera) ──
+            const inputRow = makeEl('div', 'reading-input-row');
+            const readingInput = makeEl('input', 'reading-input');
+            readingInput.type = 'number';
+            readingInput.inputMode = 'numeric';
+            readingInput.placeholder = '0000';
+            readingInput.min = '0';
+            readingInput.max = '999999';
+            const unit = makeEl('span', 'reading-unit');
+            unit.textContent = 'kWh';
+            inputRow.appendChild(readingInput);
+            inputRow.appendChild(unit);
+
+            // Confirm button (shared)
+            const confirmBtn = makeEl('button', 'confirm-reading-btn');
+            confirmBtn.textContent = 'Confirm reading';
+            confirmBtn.disabled = true;
+
+            if (isMobile()) {
+                // On mobile: hide text input, show big camera button first
+                inputRow.style.display = 'none';
+                confirmBtn.style.display = 'none';
+
+                // Hidden file input
+                const fileInput = makeEl('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.setAttribute('capture', 'environment');
+                fileInput.style.display = 'none';
+                widget.appendChild(fileInput);
+
+                // Big camera button
+                const cameraBtn = makeEl('button', 'camera-btn');
+
+                const iconCircle = makeEl('div', 'camera-btn-icon');
+                const camSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                camSvg.setAttribute('width', '26'); camSvg.setAttribute('height', '26');
+                camSvg.setAttribute('viewBox', '0 0 24 24'); camSvg.setAttribute('fill', 'none');
+                const camPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                camPath.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
+                camPath.setAttribute('stroke', '#fff'); camPath.setAttribute('stroke-width', '2');
+                camPath.setAttribute('stroke-linecap', 'round'); camPath.setAttribute('stroke-linejoin', 'round');
+                const camCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                camCircle.setAttribute('cx', '12'); camCircle.setAttribute('cy', '13');
+                camCircle.setAttribute('r', '4'); camCircle.setAttribute('stroke', '#fff');
+                camCircle.setAttribute('stroke-width', '2');
+                camSvg.appendChild(camPath); camSvg.appendChild(camCircle);
+                iconCircle.appendChild(camSvg);
+
+                const camLabel = makeEl('span');
+                camLabel.textContent = 'Take photo of meter';
+                const camSub = makeEl('span', 'camera-btn-sub');
+                camSub.textContent = 'Opens your camera';
+
+                cameraBtn.appendChild(iconCircle);
+                cameraBtn.appendChild(camLabel);
+                cameraBtn.appendChild(camSub);
+                widget.appendChild(cameraBtn);
+
+                // OCR scanning state
+                const ocrScanning = makeEl('div', 'ocr-scanning');
+                ocrScanning.style.display = 'none';
+                const spinner = makeEl('div', 'ocr-spinner');
+                const ocrText = makeEl('span');
+                ocrText.textContent = 'Reading your meter…';
+                ocrScanning.appendChild(spinner);
+                ocrScanning.appendChild(ocrText);
+                widget.appendChild(ocrScanning);
+
+                // Camera tap → open file picker
+                cameraBtn.addEventListener('click', () => fileInput.click());
+
+                fileInput.addEventListener('change', () => {
+                    if (!fileInput.files.length) return;
+                    cameraBtn.style.display  = 'none';
+                    ocrScanning.style.display = 'flex';
+
+                    setTimeout(() => {
+                        ocrScanning.style.display = 'none';
+                        // Reveal input with simulated reading
+                        const simulated = String(4000 + Math.floor(Math.random() * 2000));
+                        readingInput.value = simulated;
+                        inputRow.style.display = 'flex';
+                        confirmBtn.style.display = 'block';
+                        confirmBtn.disabled = false;
+                        scrollToBottom();
+                    }, 2500);
+                });
+
+            } else {
+                // Desktop: show text input immediately, enable confirm on typing
+                readingInput.addEventListener('input', () => {
+                    confirmBtn.disabled = !readingInput.value.trim();
+                });
+            }
+
+            widget.appendChild(inputRow);
+            widget.appendChild(confirmBtn);
+            chatMessages.appendChild(widget);
+            scrollToBottom();
+
+            // Confirm button submits reading and advances script
+            confirmBtn.addEventListener('click', () => {
+                const val = readingInput.value.trim();
+                if (!val) return;
+                capturedReading = Number(val).toLocaleString('fr-BE');
+                widget.remove();
+                addMessage(`My reading is ${capturedReading} kWh`, 'prospect');
+                advanceScript();
+            });
+        }
+
+        // ── Add a message bubble ──────────────────────────────────────────────
+        function addMessage(text, type) {
+            const id  = ++msgIdCounter;
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+            const row = document.createElement('div');
+            row.className = `msg-row ${type}`;
+            row.id = `msg-${id}`;
+
+            if (type === 'agent') {
+                const av = document.createElement('img');
+                av.className = 'msg-avatar';
+                av.src = 'assets/lisa.jpg';
+                av.alt = 'Lisa';
+                row.appendChild(av);
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'bubble-wrap';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            const p = document.createElement('p');
+            p.className = 'bubble-text';
+            p.textContent = text;
+
+            const t = document.createElement('span');
+            t.className = 'bubble-time';
+            t.textContent = time;
+
+            bubble.appendChild(p);
+            bubble.appendChild(t);
+            wrap.appendChild(bubble);
+            row.appendChild(wrap);
+            chatMessages.appendChild(row);
+            scrollToBottom();
+            return id;
+        }
+
+        // ── Product cards ─────────────────────────────────────────────────────
+        function makeEl(tag, className) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            return el;
+        }
+
+        function renderProductCards() {
+            const container = makeEl('div', 'product-cards');
+            container.id = 'productCards';
+
+            PRODUCTS.forEach(prod => {
+                const card = makeEl('div', 'product-card');
+
+                const imgWrap = makeEl('div', 'product-img-wrap');
+                const img = makeEl('img', 'product-img');
+                img.src = prod.img;
+                img.alt = prod.name;
+                const badge = makeEl('div', 'product-badge');
+                badge.style.background = prod.badgeColor;
+                badge.textContent = prod.badge;
+                imgWrap.appendChild(img);
+                imgWrap.appendChild(badge);
+
+                const info = makeEl('div', 'product-info');
+                const nameEl = makeEl('p', 'product-name');
+                nameEl.textContent = prod.name;
+                const taglineEl = makeEl('p', 'product-tagline');
+                taglineEl.textContent = prod.tagline;
+                const priceEl = makeEl('p', 'product-price');
+                priceEl.textContent = prod.price;
+
+                const actions = makeEl('div', 'product-actions');
+                const infoBtn = makeEl('button', 'product-btn info-btn');
+                infoBtn.textContent = 'More info';
+                infoBtn.dataset.id = prod.id;
+                const selectBtn = makeEl('button', 'product-btn select-btn');
+                selectBtn.textContent = 'Select ›';
+                selectBtn.dataset.id = prod.id;
+                actions.appendChild(infoBtn);
+                actions.appendChild(selectBtn);
+
+                info.appendChild(nameEl);
+                info.appendChild(taglineEl);
+                info.appendChild(priceEl);
+                info.appendChild(actions);
+                card.appendChild(imgWrap);
+                card.appendChild(info);
+                container.appendChild(card);
+            });
+
+            chatMessages.appendChild(container);
+            scrollToBottom();
+
+            container.querySelectorAll('.info-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const prod = PRODUCTS.find(p => p.id === btn.dataset.id);
+                    if (!prod) return;
+                    addMessage('Tell me more about the ' + prod.name + '.', 'prospect');
+                    setInputEnabled(false);
+                    showTyping();
+                    setTimeout(() => {
+                        hideTyping();
+                        addMessage(prod.detail, 'agent');
+                        scrollToBottom();
+                    }, 2000);
+                });
+            });
+
+            container.querySelectorAll('.select-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const prod = PRODUCTS.find(p => p.id === btn.dataset.id);
+                    if (!prod) return;
+                    capturedProduct = prod.name + ' (' + prod.price + ')';
+                    container.remove();
+                    addMessage("I'd like the " + prod.name + '!', 'prospect');
+                    advanceScript();
+                });
+            });
+        }
+
+        // ── Scheduler ─────────────────────────────────────────────────────────
+        function isBelgianHoliday(date) {
+            const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
+            const fixed = ['1-1','5-1','7-21','8-15','11-1','11-11','12-25'];
+            if (fixed.includes(m + '-' + d)) return true;
+            // Easter (Anonymous Gregorian)
+            const a = y % 19, b = Math.floor(y / 100), c = y % 100;
+            const dd = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+            const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - dd - g + 15) % 30;
+            const i = Math.floor(c / 4), k = c % 4;
+            const l = (32 + 2 * e + 2 * i - h - k) % 7;
+            const mm = Math.floor((a + 11 * h + 22 * l) / 451);
+            const em = Math.floor((h + l - 7 * mm + 114) / 31);
+            const ed = ((h + l - 7 * mm + 114) % 31) + 1;
+            const easter = new Date(y, em - 1, ed);
+            return [1, 39, 50].some(offset => {
+                const dt = new Date(easter);
+                dt.setDate(dt.getDate() + offset);
+                return dt.getMonth() + 1 === m && dt.getDate() === d && dt.getFullYear() === y;
+            });
+        }
+
+        function getAvailableDates() {
+            const dates = [];
+            const cursor = new Date();
+            cursor.setDate(cursor.getDate() + 1);
+            while (dates.length < 6) {
+                const day = cursor.getDay();
+                if (day !== 0 && day !== 6 && !isBelgianHoliday(cursor)) {
+                    dates.push({
+                        value: cursor.toISOString().split('T')[0],
+                        weekday: cursor.toLocaleDateString('en-GB', { weekday: 'short' }),
+                        day: cursor.getDate(),
+                        month: cursor.toLocaleDateString('en-GB', { month: 'short' })
+                    });
+                }
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            return dates;
+        }
+
+        function renderScheduler() {
+            const card = makeEl('div', 'scheduler-card');
+            card.id = 'schedulerCard';
+
+            // Header
+            const hdr = makeEl('div', 'scheduler-header');
+            const iconWrap = makeEl('div', 'scheduler-icon');
+            iconWrap.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+            const hdrText = makeEl('div');
+            const hdrTitle = makeEl('p', 'scheduler-title');
+            hdrTitle.textContent = 'Book your free site visit';
+            const hdrSub = makeEl('p', 'scheduler-subtitle');
+            hdrSub.textContent = '60 min · At your home · Sibelga-certified installer';
+            hdrText.appendChild(hdrTitle);
+            hdrText.appendChild(hdrSub);
+            hdr.appendChild(iconWrap);
+            hdr.appendChild(hdrText);
+            card.appendChild(hdr);
+
+            // Date label + chips
+            const dateLabel = makeEl('p', 'scheduler-label');
+            dateLabel.textContent = 'Select a date';
+            card.appendChild(dateLabel);
+
+            const chipsWrap = makeEl('div', 'date-chips');
+            let selectedDate = null;
+
+            const dates = getAvailableDates();
+            dates.forEach(dt => {
+                const chip = makeEl('button', 'date-chip');
+                chip.dataset.value = dt.value;
+                const wd = makeEl('span', 'date-weekday'); wd.textContent = dt.weekday;
+                const dy = makeEl('span', 'date-day');     dy.textContent = dt.day;
+                const mo = makeEl('span', 'date-month');   mo.textContent = dt.month;
+                chip.appendChild(wd); chip.appendChild(dy); chip.appendChild(mo);
+                chipsWrap.appendChild(chip);
+            });
+            card.appendChild(chipsWrap);
+
+            // Time slots container (hidden until date picked)
+            const timeSection = makeEl('div');
+            timeSection.id = 'timeSection';
+            timeSection.style.display = 'none';
+            const timeLabel = makeEl('p', 'scheduler-label');
+            timeLabel.textContent = 'Select a time';
+            const slotsWrap = makeEl('div', 'time-slots');
+            let selectedTime = null;
+
+            ['09:00','10:00','11:00','14:00','15:00','16:00'].forEach(t => {
+                const slot = makeEl('button', 'time-slot');
+                slot.dataset.value = t;
+                slot.textContent = t;
+                slotsWrap.appendChild(slot);
+            });
+            timeSection.appendChild(timeLabel);
+            timeSection.appendChild(slotsWrap);
+            card.appendChild(timeSection);
+
+            // Confirm button
+            const bookBtn = makeEl('button', 'book-btn');
+            bookBtn.disabled = true;
+            const bookLabel = makeEl('span');
+            bookLabel.textContent = 'Confirm booking';
+            const bookArrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            bookArrow.setAttribute('width', '16'); bookArrow.setAttribute('height', '16');
+            bookArrow.setAttribute('viewBox', '0 0 24 24'); bookArrow.setAttribute('fill', 'none');
+            const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrowPath.setAttribute('d', 'M5 12h14M12 5l7 7-7 7');
+            arrowPath.setAttribute('stroke', 'currentColor'); arrowPath.setAttribute('stroke-width', '2');
+            arrowPath.setAttribute('stroke-linecap', 'round'); arrowPath.setAttribute('stroke-linejoin', 'round');
+            bookArrow.appendChild(arrowPath);
+            bookBtn.appendChild(bookLabel);
+            bookBtn.appendChild(bookArrow);
+            card.appendChild(bookBtn);
+
+            chatMessages.appendChild(card);
+            scrollToBottom();
+
+            // Date selection
+            chipsWrap.querySelectorAll('.date-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectedDate = chip.dataset.value;
+                    selectedTime = null;
+                    chipsWrap.querySelectorAll('.date-chip').forEach(c => c.classList.remove('selected'));
+                    chip.classList.add('selected');
+                    slotsWrap.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                    bookBtn.disabled = true;
+                    timeSection.style.display = 'block';
+                    scrollToBottom();
+                });
+            });
+
+            // Time selection
+            slotsWrap.querySelectorAll('.time-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    selectedTime = slot.dataset.value;
+                    slotsWrap.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                    slot.classList.add('selected');
+                    bookBtn.disabled = false;
+                });
+            });
+
+            // Confirm booking
+            bookBtn.addEventListener('click', () => {
+                if (!selectedDate || !selectedTime) return;
+
+                // Build confirmation text
+                const d = new Date(selectedDate + 'T12:00:00');
+                const dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+                const confirmText = dateStr + ' at ' + selectedTime + ' — A Sibelga-certified installer will visit your home.';
+
+                // Replace card with booking confirmed UI
+                const confirmed = makeEl('div', 'booking-confirmed');
+                const iconDiv = makeEl('div', 'confirmed-icon');
+                const checkSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                checkSvg.setAttribute('width', '36'); checkSvg.setAttribute('height', '36');
+                checkSvg.setAttribute('viewBox', '0 0 24 24'); checkSvg.setAttribute('fill', 'none');
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12');
+                circle.setAttribute('r', '10'); circle.setAttribute('fill', '#003DA5');
+                const check = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                check.setAttribute('d', 'M7 12.5l3.5 3.5L17 9');
+                check.setAttribute('stroke', '#fff'); check.setAttribute('stroke-width', '2.5');
+                check.setAttribute('stroke-linecap', 'round'); check.setAttribute('stroke-linejoin', 'round');
+                checkSvg.appendChild(circle); checkSvg.appendChild(check);
+                iconDiv.appendChild(checkSvg);
+
+                const title = makeEl('p', 'confirmed-title');
+                title.textContent = 'Visit booked!';
+                const detail = makeEl('p', 'confirmed-detail');
+                detail.textContent = confirmText;
+
+                confirmed.appendChild(iconDiv);
+                confirmed.appendChild(title);
+                confirmed.appendChild(detail);
+
+                card.replaceChildren(confirmed);
+                scrollToBottom();
+                advanceScript();
+            });
+        }
+
+        // ── Typing indicator ──────────────────────────────────────────────────
+        function showTyping() {
+            const row = document.createElement('div');
+            row.className = 'msg-row agent';
+            row.id = 'typing-indicator';
+
+            const av = document.createElement('img');
+            av.className = 'msg-avatar';
+            av.src = 'assets/lisa.jpg';
+            av.alt = 'Lisa';
+            row.appendChild(av);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'bubble-wrap';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble typing-bubble';
+            bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+            wrap.appendChild(bubble);
+            row.appendChild(wrap);
+            chatMessages.appendChild(row);
+            scrollToBottom();
+        }
+
+        function hideTyping() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        // ── Advance the script ────────────────────────────────────────────────
+        function advanceScript() {
+            scriptIndex++;
+            if (scriptIndex >= SCRIPT.length) {
+                isComplete = true;
+                setInputEnabled(false);
+                onlineDot.className     = 'online-dot offline';
+                agentStatus.textContent = 'Sibelga Assistant · Offline';
+                return;
+            }
+
+            setInputEnabled(false);
+            isTyping = true;
+            showTyping();
+
+            const delay = 2800 + Math.floor(Math.random() * 1800);
+            setTimeout(() => {
+                hideTyping();
+                isTyping = false;
+                showAgentStep(scriptIndex);
+            }, delay);
+        }
+
+        // ── Handle send ───────────────────────────────────────────────────────
+        function handleSend() {
+            const text = chatInput.value.trim();
+            if (!text || isTyping || isComplete) return;
+            chatInput.value = '';
+            setInputEnabled(false);
+
+            addMessage(text, 'prospect');
+            advanceScript();
+        }
+
+        function setInputEnabled(enabled) {
+            chatInput.disabled = !enabled;
+            sendBtn.disabled   = !enabled;
+        }
+
+        // ── Scroll to bottom ──────────────────────────────────────────────────
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 50);
+        }
+
+        // ── Live clock ───────────────────────────────────────────────────────
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('statusClock').textContent = h + ':' + m;
+        }
+        updateClock();
+        setInterval(updateClock, 10000);
+
+        // ── Event listeners ───────────────────────────────────────────────────
+        launcherBtn.addEventListener('click', toggleChat);
+        closeBtn.addEventListener('click', toggleChat);
+
+        sendBtn.addEventListener('click', handleSend);
+
+        chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleSend();
+        });
+    </script>
+
+    </div><!-- /phone-frame -->
+</body>
+</html>

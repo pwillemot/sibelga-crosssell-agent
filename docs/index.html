@@ -1586,17 +1586,12 @@
                 showWidget: null
             },
             {
-                agentMessage: "Of course! Would you like to enter your EAN code manually, or scan it with your phone?",
+                agentMessage: "Of course! You can enter your meter number and current reading manually, or just take a photo and I'll read them for you.",
                 prospectHint: null,
-                showWidget: 'EANCapture'
+                showWidget: 'MeterCapture'
             },
             {
-                agentMessage: "Thanks! I found your electricity meter (EAN: BE001234567890).\nPlease enter your current reading below, or take a photo of your meter display.",
-                prospectHint: "e.g. 4821",
-                showWidget: 'CaptureReading'
-            },
-            {
-                agentMessage: "Perfect — reading of {reading} kWh recorded. ✓\nYou'll receive a confirmation email shortly.",
+                agentMessage: "Perfect — I've recorded meter {ean} with a reading of {reading} kWh. ✓\nYou'll receive a confirmation email shortly.",
                 prospectHint: "Great, thank you",
                 showWidget: null
             },
@@ -1668,6 +1663,7 @@
         let isTyping         = false;
         let isComplete       = false;
         let capturedReading  = '';
+        let capturedEAN      = '';
         let capturedName     = '';
         let capturedProduct  = '';
         let msgIdCounter     = 0;
@@ -1711,18 +1707,13 @@
             const step = SCRIPT[index];
             let text = step.agentMessage
                 .replace('{reading}', capturedReading || '—')
+                .replace('{ean}',     capturedEAN     || 'BE001234567890')
                 .replace('{name}',    capturedName    || 'there');
 
             addMessage(text, 'agent');
 
-            if (step.showWidget === 'EANCapture') {
-                renderEANWidget();
-                setInputEnabled(false);
-                return;
-            }
-
-            if (step.showWidget === 'CaptureReading') {
-                renderReadingWidget();
+            if (step.showWidget === 'MeterCapture') {
+                renderMeterCaptureWidget();
                 setInputEnabled(false);
                 return;
             }
@@ -1747,7 +1738,7 @@
             setInputEnabled(needsInput && !isComplete);
         }
 
-        // ── EAN capture widget ────────────────────────────────────────────────
+        // ── SVG helper ────────────────────────────────────────────────────────
         function makeSvgIcon(paths) {
             const ns = 'http://www.w3.org/2000/svg';
             const svg = document.createElementNS(ns, 'svg');
@@ -1763,11 +1754,30 @@
             return svg;
         }
 
-        function renderEANWidget() {
-            const widget = makeEl('div', 'ean-widget');
-            widget.id = 'eanWidget';
+        // ── Combined meter capture widget (EAN + reading, manual or photo) ────
+        const isMobile = () => (window.innerWidth <= 768 || navigator.maxTouchPoints > 0);
 
-            // Two choice buttons
+        function makeCamSvg(size, strokeColor) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(ns, 'svg');
+            svg.setAttribute('width', size); svg.setAttribute('height', size);
+            svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+            const p = document.createElementNS(ns, 'path');
+            p.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
+            p.setAttribute('stroke', strokeColor); p.setAttribute('stroke-width', '2');
+            p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round');
+            const c = document.createElementNS(ns, 'circle');
+            c.setAttribute('cx', '12'); c.setAttribute('cy', '13'); c.setAttribute('r', '4');
+            c.setAttribute('stroke', strokeColor); c.setAttribute('stroke-width', '2');
+            svg.appendChild(p); svg.appendChild(c);
+            return svg;
+        }
+
+        function renderMeterCaptureWidget() {
+            const widget = makeEl('div', 'ean-widget');
+            widget.id = 'meterCaptureWidget';
+
+            // ── Tab toggle buttons ──
             const choiceBtns = makeEl('div', 'ean-choice-btns');
 
             function makeChoiceBtn(iconPaths, labelText) {
@@ -1786,149 +1796,33 @@
                 { tag: 'path', attrs: { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' } }
             ], 'Enter manually');
 
-            const scanBtn = makeChoiceBtn([
-                { tag: 'rect', attrs: { x: '3', y: '3', width: '7', height: '7', rx: '1' } },
-                { tag: 'rect', attrs: { x: '14', y: '3', width: '7', height: '7', rx: '1' } },
-                { tag: 'rect', attrs: { x: '3', y: '14', width: '7', height: '7', rx: '1' } },
-                { tag: 'path', attrs: { d: 'M14 14h2v2h-2zM18 14h3M14 18h2M18 18h3M14 21v-3M21 18v3' } }
-            ], 'Scan with phone');
+            const photoBtn = makeChoiceBtn([
+                { tag: 'path', attrs: { d: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z', 'stroke-linejoin': 'round' } },
+                { tag: 'circle', attrs: { cx: '12', cy: '13', r: '4' } }
+            ], 'Take a photo');
 
             choiceBtns.appendChild(manualBtn);
-            choiceBtns.appendChild(scanBtn);
+            choiceBtns.appendChild(photoBtn);
             widget.appendChild(choiceBtns);
 
-            // Manual section
+            // ── Manual section ──
             const manualSection = makeEl('div', 'ean-manual-section');
-            const manualLabel = makeEl('p', 'ean-label');
-            manualLabel.textContent = 'EAN code';
-            const manualInputRow = makeEl('div', 'ean-input-row');
+
+            const eanLabel = makeEl('p', 'ean-label');
+            eanLabel.textContent = 'Meter number (EAN)';
+            const eanInputRow = makeEl('div', 'ean-input-row');
             const eanInput = makeEl('input', 'ean-input');
             eanInput.type = 'text';
             eanInput.placeholder = 'BE001234567890';
             eanInput.maxLength = 18;
-            manualInputRow.appendChild(eanInput);
-            manualSection.appendChild(manualLabel);
-            manualSection.appendChild(manualInputRow);
-            widget.appendChild(manualSection);
+            eanInputRow.appendChild(eanInput);
+            manualSection.appendChild(eanLabel);
+            manualSection.appendChild(eanInputRow);
 
-            // Scan section
-            const scanSection = makeEl('div', 'ean-scan-section');
-
-            const fileInput = makeEl('input');
-            fileInput.type = 'file';
-            fileInput.accept = 'image/*';
-            fileInput.setAttribute('capture', 'environment');
-            fileInput.style.display = 'none';
-            scanSection.appendChild(fileInput);
-
-            // Big scan button
-            const ns = 'http://www.w3.org/2000/svg';
-            const bigScanBtn = makeEl('button', 'ean-scan-btn');
-            const iconCircle = makeEl('div', 'ean-scan-btn-icon');
-            const qrSvg = document.createElementNS(ns, 'svg');
-            qrSvg.setAttribute('width', '26'); qrSvg.setAttribute('height', '26');
-            qrSvg.setAttribute('viewBox', '0 0 24 24'); qrSvg.setAttribute('fill', 'none');
-            qrSvg.setAttribute('stroke', '#fff'); qrSvg.setAttribute('stroke-width', '2');
-            qrSvg.setAttribute('stroke-linecap', 'round');
-            [
-                { tag: 'rect', attrs: { x: '3', y: '3', width: '7', height: '7', rx: '1' } },
-                { tag: 'rect', attrs: { x: '14', y: '3', width: '7', height: '7', rx: '1' } },
-                { tag: 'rect', attrs: { x: '3', y: '14', width: '7', height: '7', rx: '1' } },
-                { tag: 'path', attrs: { d: 'M14 14h2v2h-2zM18 14h3M14 18h2M18 18h3M14 21v-3M21 18v3' } }
-            ].forEach(p => {
-                const el = document.createElementNS(ns, p.tag);
-                Object.entries(p.attrs).forEach(([k, v]) => el.setAttribute(k, v));
-                qrSvg.appendChild(el);
-            });
-            iconCircle.appendChild(qrSvg);
-            const scanLabel = makeEl('span');
-            scanLabel.textContent = 'Scan EAN barcode';
-            const scanSub = makeEl('span', 'ean-scan-btn-sub');
-            scanSub.textContent = 'Opens your camera';
-            bigScanBtn.appendChild(iconCircle);
-            bigScanBtn.appendChild(scanLabel);
-            bigScanBtn.appendChild(scanSub);
-            scanSection.appendChild(bigScanBtn);
-
-            // Scanning indicator
-            const scanning = makeEl('div', 'ean-scanning');
-            const spinner = makeEl('div', 'ocr-spinner');
-            const scanningText = makeEl('span');
-            scanningText.textContent = 'Scanning barcode…';
-            scanning.appendChild(spinner);
-            scanning.appendChild(scanningText);
-            scanSection.appendChild(scanning);
-
-            widget.appendChild(scanSection);
-
-            // Confirm button (shared)
-            const confirmBtn = makeEl('button', 'confirm-ean-btn');
-            confirmBtn.textContent = 'Confirm EAN';
-            confirmBtn.disabled = true;
-            widget.appendChild(confirmBtn);
-
-            chatMessages.appendChild(widget);
-            scrollToBottom();
-
-            // Choice logic
-            manualBtn.addEventListener('click', () => {
-                manualBtn.classList.add('selected');
-                scanBtn.classList.remove('selected');
-                manualSection.style.display = 'block';
-                scanSection.style.display = 'none';
-                confirmBtn.disabled = !eanInput.value.trim();
-                scrollToBottom();
-            });
-
-            scanBtn.addEventListener('click', () => {
-                scanBtn.classList.add('selected');
-                manualBtn.classList.remove('selected');
-                scanSection.style.display = 'block';
-                manualSection.style.display = 'none';
-                confirmBtn.disabled = true;
-                scrollToBottom();
-            });
-
-            eanInput.addEventListener('input', () => {
-                confirmBtn.disabled = !eanInput.value.trim();
-            });
-
-            bigScanBtn.addEventListener('click', () => fileInput.click());
-
-            fileInput.addEventListener('change', () => {
-                if (!fileInput.files.length) return;
-                bigScanBtn.style.display = 'none';
-                scanning.style.display = 'flex';
-                setTimeout(() => {
-                    scanning.style.display = 'none';
-                    eanInput.value = 'BE001234567890';
-                    manualSection.style.display = 'block';
-                    confirmBtn.disabled = false;
-                    scrollToBottom();
-                }, 2000);
-            });
-
-            confirmBtn.addEventListener('click', () => {
-                const val = eanInput.value.trim() || 'BE001234567890';
-                widget.remove();
-                addMessage('My EAN code is ' + val, 'prospect');
-                advanceScript();
-            });
-        }
-
-        // ── Meter reading widget ──────────────────────────────────────────────
-        const isMobile = () => (window.innerWidth <= 768 || navigator.maxTouchPoints > 0);
-
-        function renderReadingWidget() {
-            const widget = makeEl('div', 'reading-widget');
-            widget.id = 'readingWidget';
-
-            const label = makeEl('p', 'reading-widget-label');
-            label.textContent = 'Meter reading';
-            widget.appendChild(label);
-
-            // ── Text input (always present, hidden on mobile until after camera) ──
-            const inputRow = makeEl('div', 'reading-input-row');
+            const readingLabel = makeEl('p', 'ean-label');
+            readingLabel.style.marginTop = '10px';
+            readingLabel.textContent = 'Current reading';
+            const readingInputRow = makeEl('div', 'ean-input-row');
             const readingInput = makeEl('input', 'reading-input');
             readingInput.type = 'number';
             readingInput.inputMode = 'numeric';
@@ -1937,104 +1831,109 @@
             readingInput.max = '999999';
             const unit = makeEl('span', 'reading-unit');
             unit.textContent = 'kWh';
-            inputRow.appendChild(readingInput);
-            inputRow.appendChild(unit);
+            readingInputRow.appendChild(readingInput);
+            readingInputRow.appendChild(unit);
+            manualSection.appendChild(readingLabel);
+            manualSection.appendChild(readingInputRow);
 
-            // Confirm button (shared)
-            const confirmBtn = makeEl('button', 'confirm-reading-btn');
-            confirmBtn.textContent = 'Confirm reading';
+            widget.appendChild(manualSection);
+
+            // ── Photo section ──
+            const photoSection = makeEl('div', 'ean-scan-section');
+
+            const fileInput = makeEl('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.setAttribute('capture', 'environment');
+            fileInput.style.display = 'none';
+            photoSection.appendChild(fileInput);
+
+            const bigCamBtn = makeEl('button', 'camera-btn');
+            const camIconCircle = makeEl('div', 'camera-btn-icon');
+            camIconCircle.appendChild(makeCamSvg('26', '#fff'));
+            const camLabel = makeEl('span');
+            camLabel.textContent = 'Take photo of meter';
+            const camSub = makeEl('span', 'camera-btn-sub');
+            camSub.textContent = 'We'll read EAN and index automatically';
+            bigCamBtn.appendChild(camIconCircle);
+            bigCamBtn.appendChild(camLabel);
+            bigCamBtn.appendChild(camSub);
+            photoSection.appendChild(bigCamBtn);
+
+            const ocrScanning = makeEl('div', 'ocr-scanning');
+            ocrScanning.style.display = 'none';
+            const spinner = makeEl('div', 'ocr-spinner');
+            const ocrText = makeEl('span');
+            ocrText.textContent = 'Reading meter…';
+            ocrScanning.appendChild(spinner);
+            ocrScanning.appendChild(ocrText);
+            photoSection.appendChild(ocrScanning);
+
+            widget.appendChild(photoSection);
+
+            // ── Confirm button ──
+            const confirmBtn = makeEl('button', 'confirm-ean-btn');
+            confirmBtn.textContent = 'Confirm';
             confirmBtn.disabled = true;
-
-            if (isMobile()) {
-                // On mobile: hide text input, show big camera button first
-                inputRow.style.display = 'none';
-                confirmBtn.style.display = 'none';
-
-                // Hidden file input
-                const fileInput = makeEl('input');
-                fileInput.type = 'file';
-                fileInput.accept = 'image/*';
-                fileInput.setAttribute('capture', 'environment');
-                fileInput.style.display = 'none';
-                widget.appendChild(fileInput);
-
-                // Big camera button
-                const cameraBtn = makeEl('button', 'camera-btn');
-
-                const iconCircle = makeEl('div', 'camera-btn-icon');
-                const camSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                camSvg.setAttribute('width', '26'); camSvg.setAttribute('height', '26');
-                camSvg.setAttribute('viewBox', '0 0 24 24'); camSvg.setAttribute('fill', 'none');
-                const camPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                camPath.setAttribute('d', 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z');
-                camPath.setAttribute('stroke', '#fff'); camPath.setAttribute('stroke-width', '2');
-                camPath.setAttribute('stroke-linecap', 'round'); camPath.setAttribute('stroke-linejoin', 'round');
-                const camCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                camCircle.setAttribute('cx', '12'); camCircle.setAttribute('cy', '13');
-                camCircle.setAttribute('r', '4'); camCircle.setAttribute('stroke', '#fff');
-                camCircle.setAttribute('stroke-width', '2');
-                camSvg.appendChild(camPath); camSvg.appendChild(camCircle);
-                iconCircle.appendChild(camSvg);
-
-                const camLabel = makeEl('span');
-                camLabel.textContent = 'Take photo of meter';
-                const camSub = makeEl('span', 'camera-btn-sub');
-                camSub.textContent = 'Opens your camera';
-
-                cameraBtn.appendChild(iconCircle);
-                cameraBtn.appendChild(camLabel);
-                cameraBtn.appendChild(camSub);
-                widget.appendChild(cameraBtn);
-
-                // OCR scanning state
-                const ocrScanning = makeEl('div', 'ocr-scanning');
-                ocrScanning.style.display = 'none';
-                const spinner = makeEl('div', 'ocr-spinner');
-                const ocrText = makeEl('span');
-                ocrText.textContent = 'Reading your meter…';
-                ocrScanning.appendChild(spinner);
-                ocrScanning.appendChild(ocrText);
-                widget.appendChild(ocrScanning);
-
-                // Camera tap → open file picker
-                cameraBtn.addEventListener('click', () => fileInput.click());
-
-                fileInput.addEventListener('change', () => {
-                    if (!fileInput.files.length) return;
-                    cameraBtn.style.display  = 'none';
-                    ocrScanning.style.display = 'flex';
-
-                    setTimeout(() => {
-                        ocrScanning.style.display = 'none';
-                        // Reveal input with simulated reading
-                        const simulated = String(4000 + Math.floor(Math.random() * 2000));
-                        readingInput.value = simulated;
-                        inputRow.style.display = 'flex';
-                        confirmBtn.style.display = 'block';
-                        confirmBtn.disabled = false;
-                        scrollToBottom();
-                    }, 2500);
-                });
-
-            } else {
-                // Desktop: show text input immediately, enable confirm on typing
-                readingInput.addEventListener('input', () => {
-                    confirmBtn.disabled = !readingInput.value.trim();
-                });
-            }
-
-            widget.appendChild(inputRow);
             widget.appendChild(confirmBtn);
+
             chatMessages.appendChild(widget);
             scrollToBottom();
 
-            // Confirm button submits reading and advances script
+            // ── Helper: recheck confirm enable ──
+            function checkConfirm() {
+                confirmBtn.disabled = !(eanInput.value.trim() && readingInput.value.trim());
+            }
+
+            eanInput.addEventListener('input', checkConfirm);
+            readingInput.addEventListener('input', checkConfirm);
+
+            // ── Tab switching ──
+            manualBtn.addEventListener('click', () => {
+                manualBtn.classList.add('selected');
+                photoBtn.classList.remove('selected');
+                manualSection.style.display = 'block';
+                photoSection.style.display = 'none';
+                checkConfirm();
+                scrollToBottom();
+            });
+
+            photoBtn.addEventListener('click', () => {
+                photoBtn.classList.add('selected');
+                manualBtn.classList.remove('selected');
+                photoSection.style.display = 'block';
+                manualSection.style.display = 'none';
+                confirmBtn.disabled = true;
+                scrollToBottom();
+            });
+
+            // ── Camera flow ──
+            bigCamBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', () => {
+                if (!fileInput.files.length) return;
+                bigCamBtn.style.display = 'none';
+                ocrScanning.style.display = 'flex';
+                setTimeout(() => {
+                    ocrScanning.style.display = 'none';
+                    // Simulate OCR: fill both fields then show manual section for review
+                    eanInput.value = 'BE001234567890';
+                    readingInput.value = String(4000 + Math.floor(Math.random() * 2000));
+                    manualSection.style.display = 'block';
+                    confirmBtn.disabled = false;
+                    scrollToBottom();
+                }, 2500);
+            });
+
+            // ── Confirm ──
             confirmBtn.addEventListener('click', () => {
+                const ean = eanInput.value.trim() || 'BE001234567890';
                 const val = readingInput.value.trim();
-                if (!val) return;
+                if (!ean || !val) return;
+                capturedEAN     = ean;
                 capturedReading = Number(val).toLocaleString('fr-BE');
                 widget.remove();
-                addMessage(`My reading is ${capturedReading} kWh`, 'prospect');
+                addMessage('Meter ' + ean + ', reading: ' + capturedReading + ' kWh', 'prospect');
                 advanceScript();
             });
         }

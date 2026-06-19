@@ -1518,53 +1518,43 @@
         const SCRIPT = [
             {
                 agentMessage: "Hi! I'm Lisa, your Sibelga virtual assistant. How can I help you today?",
-                prospectHint: "I need to submit my meter reading",
                 showWidget: null
             },
             {
                 agentMessage: "Of course! You can enter your meter number and current reading manually, or just take a photo and I'll read them for you.",
-                prospectHint: null,
                 showWidget: 'MeterCapture'
             },
             {
                 agentMessage: "Perfect — I've recorded meter {ean} with a reading of {reading} kWh. ✓\nYou'll receive a confirmation email shortly.\n\nBy the way, your consumption this period is below your 3-year average — great news for your bill! 📉",
-                prospectHint: null,
                 showWidget: null,
                 autoAdvance: 3000
             },
             {
                 agentMessage: "One more thing I wanted to flag for you — we have a planned maintenance intervention scheduled for {interruptionDate} in your area. The works will affect Rue de la Loi and several surrounding streets in the Saint-Josse/Schaerbeek district. Electricity will be interrupted between 08:00 and 13:00 while our teams carry out necessary upgrades to the local distribution network. We recommend unplugging sensitive devices beforehand.\n\nWould you like us to send you a WhatsApp reminder the evening before, so you're not caught off guard?",
-                prospectHint: null,
                 showWidget: 'WhatsAppReminder'
             },
             {
                 agentMessage: "Done! ✅ I've set a WhatsApp reminder for you the evening before the interruption. You'll receive it on {reminderDate} at 18:00.",
-                prospectHint: "Thanks!",
                 showWidget: null
             },
             {
                 agentMessage: "While I have you — I can see your meter is single-phase. Many Brussels residents are switching to EV home charging. Would you like to see what Sibelga can help with?",
-                prospectHint: "Yes, tell me more",
                 showWidget: null
             },
             {
                 agentMessage: "Here are our three home charging packages. All include a certified installation by a Sibelga-approved electrician.",
-                prospectHint: null,
                 showWidget: 'Products'
             },
             {
                 agentMessage: "Great choice! A certified installer will assess your home's connection and handle the full setup. Shall we book a free site visit?",
-                prospectHint: "Yes please",
                 showWidget: null
             },
             {
                 agentMessage: "Pick a date and time that works for you — our technician will come to your address.",
-                prospectHint: null,
                 showWidget: 'Scheduler'
             },
             {
                 agentMessage: "You're all set, {name}! 🎉\nWe'll send a confirmation to your email. See you soon!",
-                prospectHint: null,
                 showWidget: null
             }
         ];
@@ -1701,8 +1691,7 @@
                 return;
             }
 
-            // Update input hint for next prospect turn
-            chatInput.placeholder = step.prospectHint || 'Type your message…';
+            chatInput.placeholder = 'Type your message…';
 
             // Enable input only for steps that expect typed input
             const needsInput = !step.showWidget;

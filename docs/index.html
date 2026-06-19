@@ -1349,8 +1349,8 @@
                     <p class="app-card-label">Meter reading</p>
                     <div class="reading-row">
                         <div class="reading-row-left">
-                            <span class="reading-ean">EAN BE001234567890</span>
-                            <span class="reading-val">4 821 kWh</span>
+                            <span class="reading-ean">EAN 33349975</span>
+                            <span class="reading-val">53 095 kWh</span>
                             <span class="reading-date">Last reading: 01/12/2024</span>
                         </div>
                         <button class="reading-cta">Submit reading</button>
@@ -1662,8 +1662,8 @@
         function showAgentStep(index) {
             const step = SCRIPT[index];
             let text = step.agentMessage
-                .replace('{reading}',          capturedReading  || '—')
-                .replace('{ean}',              capturedEAN      || 'BE001234567890')
+                .replace('{reading}',          capturedReading  || '53.095')
+                .replace('{ean}',              capturedEAN      || '33349975')
                 .replace('{name}',             capturedName     || 'there')
                 .replace('{interruptionDate}', interruptionDate)
                 .replace('{reminderDate}',     reminderDate);
@@ -1762,7 +1762,7 @@
             eanLabel.textContent = 'Meter number (EAN)';
             const eanInput = makeEl('input', 'ean-input');
             eanInput.type = 'text';
-            eanInput.placeholder = 'BE001234567890';
+            eanInput.placeholder = '33349975';
             eanInput.maxLength = 18;
             manualSection.appendChild(eanLabel);
             manualSection.appendChild(eanInput);
@@ -1865,8 +1865,8 @@
                 ocrScanning.style.display = 'flex';
                 setTimeout(() => {
                     ocrScanning.style.display = 'none';
-                    eanInput.value = 'BE001234567890';
-                    readingInput.value = String(4000 + Math.floor(Math.random() * 2000));
+                    eanInput.value = '33349975';
+                    readingInput.value = '53095';
                     manualSection.style.display = 'block';
                     checkConfirm();
                     scrollToBottom();
